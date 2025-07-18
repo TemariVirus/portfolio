@@ -1,0 +1,46 @@
+name: Format code
+
+on:
+  push:
+    branches:
+      - "main"
+  workflow_dispatch:
+
+concurrency:
+  group: "format-code"
+  cancel-in-progress: true
+
+jobs:
+  format:
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.2.18"
+
+      - name: Format code
+        run: |
+          PRETTIER=`bun -p "require('./bun.lock').packages.prettier[0]"`
+          PRETTIER_IMPORTS=`bun -p "require('./bun.lock')['packages.prettier-plugin-organize-imports'][0]"`
+          PRETTIER_SVELTE=`bun -p "require('./bun.lock').packages['prettier-plugin-svelte'][0]"`
+          PRETTIER_TAILWINDCSS=`bun -p "require('./bun.lock').packages['prettier-plugin-tailwindcss'][0]"`
+
+          rm package.json  # Temporarily remove package.json to only install prettier
+          bun install --no-save $PRETTIER_VERSION $PRETTIER_IMPORTS $PRETTIER_SVELTE $PRETTIER_TAILWINDCSS
+          git restore package.json
+          bun run format
+
+      - name: Commit changes
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "style: format code"
+          branch: ${{ github.head_ref }}
