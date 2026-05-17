@@ -4,11 +4,11 @@
     "": {
       "name": "portfolio",
       "dependencies": {
+        "@tailwindcss/vite": "4.2.4",
         "astro": "5.17.1",
         "tailwindcss": "4.2.4",
       },
       "devDependencies": {
-        "@tailwindcss/vite": "4.2.4",
         "@types/bun": "1.2.15",
       },
       "peerDependencies": {

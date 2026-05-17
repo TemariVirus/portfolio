@@ -1,0 +1,43 @@
+on:
+    push:
+        branches:
+            - "pages"
+
+concurrency:
+    group: "pages"
+    cancel-in-progress: true
+
+jobs:
+    build:
+        runs-on: ubuntu-latest
+
+        steps:
+            - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
+            - uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # 5.0.5
+              with:
+                  key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lock') }}
+                  path: "node_modules"
+            - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # 2.2.0
+              with:
+                  bun-version: 1.2.15
+            - run: |
+                  bun install --frozen-lockfile --production
+                  BASE_URL="/portfolio/" bun run build
+            - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # 5.0.0
+              with:
+                  path: "dist"
+
+    deploy:
+        needs: build
+        runs-on: ubuntu-latest
+        permissions:
+            pages: write
+            id-token: write
+        environment:
+            name: github-pages
+            url: ${{ steps.deployment.outputs.page_url }}
+
+        steps:
+            - name: Deploy to GitHub Pages
+              id: deployment
+              uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # 5.0.0
