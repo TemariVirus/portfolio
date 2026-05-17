@@ -1,0 +1,32 @@
+---
+import { Picture } from "astro:assets";
+import MainLayout from "../layouts/MainLayout.astro";
+
+import NotFoundImg from "../images/404.png";
+const base_url = import.meta.env.BASE_URL;
+---
+
+<style>
+    a {
+        font-size: 1.5rem;
+        text-decoration: underline;
+    }
+    a:hover {
+        font-weight: 600;
+    }
+</style>
+<MainLayout title="404 Not found" footer={false}>
+    <div class="flex justify-center text-center mt-6">
+        <div>
+            <Picture
+                src={NotFoundImg}
+                alt="404 Not Found"
+                title="So, no head?"
+                class="m-4"
+                layout="constrained"
+                width={540}
+            />
+            <a href={base_url}>Home</a>
+        </div>
+    </div>
+</MainLayout>

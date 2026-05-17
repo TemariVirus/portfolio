@@ -1,0 +1,47 @@
+---
+import BlogLayout from "../layouts/BlogLayout.astro";
+import { formatDateHuman, formateDateMachine } from "../lib";
+
+const files = import.meta.glob("./blog/*.astro");
+const posts = (await Promise.all(
+    Object.entries(files).map(([path, f]) =>
+        f().then((v: any) => {
+            return {
+                ...v,
+                path: path.substring(2, path.length - 6),
+            };
+        }),
+    ),
+)) as {
+    path: string;
+    title: string;
+    date: Date;
+}[];
+---
+
+<style>
+    time {
+        color: var(--caption-color);
+    }
+
+    a {
+        font-size: 1.25rem;
+    }
+</style>
+<BlogLayout title="TEMARI VÍRUS's Blog">
+    <Fragment slot="header">
+        <h1>Blog Posts</h1>
+    </Fragment>
+
+    {
+        Object.values(posts).map((p) => (
+            <p>
+                <time datetime={formateDateMachine(p.date)}>
+                    {formatDateHuman(p.date)}
+                </time>
+                <br />
+                <a href={p.path}>{p.title}</a>
+            </p>
+        ))
+    }
+</BlogLayout>

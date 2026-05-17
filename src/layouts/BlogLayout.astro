@@ -1,0 +1,38 @@
+---
+import "../styles/blog.css";
+import MainLayout from "./MainLayout.astro";
+
+interface Props {
+    title: string;
+    description?: string;
+    header?: boolean;
+    footer?: boolean;
+}
+
+const { title, description, header = true, footer } = Astro.props;
+---
+
+<style>
+    article {
+        max-width: var(--blog-width);
+        padding: 0 var(--blog-pad);
+        margin: 0 auto;
+    }
+
+    header {
+        margin: 1rem 0;
+    }
+</style>
+<MainLayout title={title} description={description} {footer}>
+    <article>
+        {
+            header && (
+                    <header>
+                        <slot name="header" />
+                    </header>
+                    <hr />
+            )
+        }
+        <slot />
+    </article>
+</MainLayout>

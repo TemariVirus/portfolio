@@ -1,0 +1,174 @@
+---
+import Links from "../../components/Links.astro";
+import BlogLayout from "../../layouts/BlogLayout.astro";
+
+import PerfectTetrisGif from "../../images/perfect-tetris.gif";
+
+const base_url = import.meta.env.BASE_URL;
+const title = "Perfect Tetris";
+const blog_link = base_url + "blog/2026-05-13";
+---
+
+<style>
+    .tetris {
+        width: 100%;
+        text-align: center;
+        line-height: 1.25;
+        white-space: nowrap;
+    }
+</style>
+<BlogLayout
+    title={title}
+    description="Perfect Tetris is a blazingly fast Tetris perfect clear solver."
+>
+    <Fragment slot="header">
+        <div class="grid justify-center">
+            <a href={PerfectTetrisGif.src} aria-label="Open image">
+                <!-- I spent way too much time trying to minify this GIF lol,
+                use a raw <img> tag instead of <Image> so that astro doesn't ruin it. -->
+                <img
+                    src={PerfectTetrisGif.src}
+                    alt="TUI program performing over 60 perfect clears a second"
+                    title="No, this is not sped up."
+                    width={360}
+                    height={(PerfectTetrisGif.height / PerfectTetrisGif.width) *
+                        360}
+                    loading="eager"
+                />
+            </a>
+        </div>
+        <h1>{title}</h1>
+        <Links
+            links={[
+                {
+                    href: "https://codeberg.org/TemariVirus/perfect-tetris",
+                    text: "Code",
+                },
+                {
+                    href: blog_link,
+                    text: "Blog post",
+                },
+            ]}
+        />
+    </Fragment>
+
+    <p>Perfect Tetris is a blazingly fast Tetris perfect clear solver.</p>
+
+    <section id="features">
+        <h2>Features</h2>
+        <ul>
+            <li>Returns a single solution instead of all possible solutions</li>
+            <li>Supports any rotation system (6 are available by default)</li>
+            <li>Optionally select piece to save in the hold slot</li>
+            <li>Specify minimum height of perfect clear to find</li>
+            <li>Input and output in fumen format</li>
+            <li>Available as a Zig package</li>
+        </ul>
+    </section>
+
+    <section id="testing-and-benchmarks">
+        <h2>Testing & Benchmarks</h2>
+        <p>
+            I tested Perfect Tetris by searching for PCs on all the 57,750
+            2-line and 79,516,080 4-line PC queues, and the number of solvable
+            queues matched up with the numbers calculated by other people
+            online.
+        </p>
+        <p>
+            The benchmark results below are agregated over 200 consecutive PCs
+            with a 7-bag randomiser:
+        </p>
+        <table class="nice-table">
+            <thead>
+                <tr>
+                    <th>PC height</th><th>Kick system</th><th>Mean time</th>
+                    <th>Max time</th><th>Mean memory</th><th>Max memory</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>4</td><td>SRS+</td><td>10.697ms</td><td>237.6ms</td>
+                    <td>245.4KiB</td><td>9.455MiB</td>
+                </tr>
+                <tr>
+                    <td>6</td><td>SRS+</td><td>9.253ms</td><td>217.8ms</td>
+                    <td>173.8KiB</td><td>2.430MiB</td>
+                </tr>
+            </tbody>
+        </table>
+        <p>
+            Most PC sovlers can only return multiple solutions, and thus have
+            significant latency. The fastest PC solver I could find online was
+            multi-threaded and still multiple times slower than Perfect Tetris.
+        </p>
+        <p><strong>TL;DR</strong>: Perfect Tetris is blazingly fast.</p>
+    </section>
+
+    <section id="background">
+        <h2>Background</h2>
+        <p>
+            <!-- TODO: link to budget tetris -->
+            This project is part of my (now somewhat abandoned) goal of making the
+            strongest Tetris bot.
+        </p>
+        <p>
+            Originally, I wrote a brute-force <a
+                href="https://en.wikipedia.org/wiki/Backtracking"
+                >backtracking</a
+            > perfect clear solver in C# so that the bot would not need to learn how
+            to perform perfect clears by itself. The playfield and tetrominoes were
+            represented by bitfields and some basic optimisations were made, but it
+            wasn't very fast, usually taking 1 to 2 seconds to find a single solution.
+            For a bot operating at 0.33s per piece, this meant it usually didn't have
+            a solution.
+        </p>
+        <p>
+            I wrote another solver (again in C#) that modeled perfect clears as
+            an <a href="https://en.wikipedia.org/wiki/Exact_cover"
+                >exact cover</a
+            > problem, and solved them with <a
+                href="https://en.wikipedia.org/wiki/Knuth%27s_Algorithm_X"
+                >Knuth's Algorithm X</a
+            >. The time to first possible solution was much faster. However,
+            while I managed to model placing tetrominoes and line clears, I'm
+            pretty sure there's no way to add path finding constraints to the
+            exact cover problem.
+        </p>
+        <figure>
+            <div class="tetris">
+                🟧🟧🟧⬜⬜⬜⬜🟦🟦🟦<br />
+                🟧🟩🟩⬜⬜⬜⬜⬜🟪🟦<br />
+                🟩🟩⬜⬜⬜⬜⬜🟪🟪🟪<br />
+            </div>
+            <figcaption>
+                The T piece is impossible to place if it comes too late.
+            </figcaption>
+        </figure>
+        <p>
+            This means that many possible solutions are checked and discarded,
+            increasing the runtime to roughly the same as before. Futhermore, my
+            code for checking if a solution was possible based on the current <a
+                href="https://tetris.fandom.com/wiki/Category:Rotation_systems"
+                >rotation system</a
+            > was buggy and ended up being too strict, and perfect clears which could
+            previously be solved became unsolvable.
+        </p>
+        <p>
+            After re-writing the engine in Zig, I set out to make the fastest
+            solver that:
+        </p>
+        <ol>
+            <li>Returns the first solution (most solvers return all)</li>
+            <li>Is single threaded (more CPU available to the bot)</li>
+            <li>Has no large pre-computed tables</li>
+            <li>Minimises memory usage (this correlates with speed)</li>
+        </ol>
+    </section>
+
+    <section id="implementation">
+        <h2>Implementation</h2>
+        <p>Check out my <a href={blog_link}>blog post</a> for more details.</p>
+    </section>
+
+    <!-- TODO: demo? -->
+</BlogLayout>

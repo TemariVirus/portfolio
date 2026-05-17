@@ -1,0 +1,53 @@
+@import "tailwindcss";
+
+:root {
+  --font-color: #ffffff;
+  --title-color: #ffdab9;
+  --caption-color: #c0c0c0;
+  --bg-color: #202020;
+  --paragraph-spacing: 1.25rem;
+  --spacer-color: #a9a9a9;
+  --highlight-color: #444444;
+  --blog-width: 80ch;
+  --blog-pad: 0.75rem;
+
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: "Courier New", Courier, monospace;
+  font-weight: 500;
+  color: var(--font-color);
+  background-color: var(--bg-color);
+}
+
+article p,
+article ol,
+article ul {
+  text-align: left;
+  line-height: 1.75;
+  margin-top: var(--paragraph-spacing);
+  margin-bottom: var(--paragraph-spacing);
+}
+@media (min-width: 42rem) {
+  article p {
+    /* This looks pretty bad there are too few words per row */
+    text-align: justify;
+  }
+}
+
+ol {
+  list-style-type: decimal;
+  margin-left: 3ch;
+}
+ul {
+  list-style-type: disc;
+  margin-left: 2ch;
+}
+
+article a {
+  text-decoration: underline;
+}
+article a:hover {
+  font-weight: 600;
+}

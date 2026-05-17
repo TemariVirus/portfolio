@@ -1,0 +1,99 @@
+:root {
+  --table-border: 1px solid var(--spacer-color);
+}
+
+body > header:first-child {
+  margin-bottom: 2.5rem;
+}
+
+h1,
+h2,
+h3 {
+  font-weight: 600;
+  color: var(--title-color);
+  margin-bottom: 1.25rem;
+  margin-top: 2rem;
+}
+h1 {
+  font-size: 2rem;
+}
+h2 {
+  font-size: 1.5rem;
+}
+h3 {
+  font-size: 1.25rem;
+}
+
+header time {
+  color: var(--caption-color);
+  font-size: 1.25rem;
+}
+
+hr {
+  color: var(--spacer-color);
+  margin-top: 1rem;
+  margin-bottom: 2rem;
+}
+
+header h2,
+header h3 {
+  margin-bottom: 0;
+}
+header [role="doc-subtitle"] {
+  margin-top: 0;
+}
+
+[role="doc-subtitle"],
+[role="note"] {
+  color: var(--caption-color);
+  font-size: 0.85rem;
+}
+
+figure {
+  margin: calc(2 * var(--paragraph-spacing)) 0;
+}
+figcaption {
+  font-size: 0.9rem;
+  font-style: italic;
+  text-align: center;
+  color: var(--caption-color);
+  margin-top: 0.5rem;
+}
+
+table {
+  margin: calc(2 * var(--paragraph-spacing)) 0;
+  width: 100%;
+}
+table.nice-table tr:hover {
+  background-color: var(--highlight-color);
+}
+
+table tr th {
+  font-weight: 600;
+  font-style: italic;
+}
+table.nice-table tr th {
+  text-align: center;
+  border-top: var(--table-border);
+  border-bottom: var(--table-border);
+}
+table.nice-table tr:last-child {
+  border-bottom: var(--table-border);
+}
+
+table tr th,
+table tr td {
+  padding: 0.25rem 0.5rem;
+}
+table.nice-table tr th,
+table.nice-table tr td {
+  border-left: var(--table-border);
+  border-right: var(--table-border);
+}
+
+table.nice-table tr td:first-child {
+  text-align: left;
+}
+table.nice-table tr td {
+  text-align: right;
+}

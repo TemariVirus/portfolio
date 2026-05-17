@@ -1,0 +1,637 @@
+---
+import Links from "../../components/Links.astro";
+import BlogLayout from "../../layouts/BlogLayout.astro";
+import { formatDateHuman, formateDateMachine } from "../../lib";
+
+import PerfectTetrisGif from "../../images/perfect-tetris.gif";
+
+const base_url = import.meta.env.BASE_URL;
+export const title = "How I made the fastest perfect clear solver (kinda)";
+export const date = new Date("2026-05-13");
+---
+
+<style>
+    .tetris {
+        width: 100%;
+        text-align: center;
+        line-height: 1.25;
+        white-space: nowrap;
+    }
+
+    .emojis-10 {
+        font-size: 1.5rem;
+    }
+    @media (min-width: 54ch) {
+        .emojis-10 {
+            font-size: 2rem;
+        }
+    }
+    @media (min-width: 64ch) {
+        .emojis-10 {
+            font-size: 2.5rem;
+        }
+    }
+    @media (min-width: 85ch) {
+        .emojis-10 {
+            font-size: 3.5rem;
+        }
+    }
+</style>
+<BlogLayout
+    title={title}
+    description="This blog post is meant to be an updated write-up of an old Reddit post I wrote at 5AM to explain Perfect Tetris."
+>
+    <Fragment slot="header">
+        <div class="grid justify-center">
+            <a href={PerfectTetrisGif.src} aria-label="Open image">
+                <!-- I spent way too much time trying to minify this GIF lol,
+            use a raw <img> tag instead of <Image> so that astro doesn't ruin it. -->
+                <img
+                    src={PerfectTetrisGif.src}
+                    alt="TUI program performing over 60 perfect clears a second"
+                    title="No, this is not sped up."
+                    width={360}
+                    height={(PerfectTetrisGif.height / PerfectTetrisGif.width) *
+                        360}
+                    loading="eager"
+                />
+            </a>
+        </div>
+        <h1>{title}</h1>
+        <time datetime={formateDateMachine(date)}>{formatDateHuman(date)}</time>
+        <Links
+            links={[
+                {
+                    href: "https://codeberg.org/TemariVirus/perfect-tetris",
+                    text: "Code",
+                },
+                {
+                    href: base_url + "project/perfect-tetris",
+                    text: "Project page",
+                },
+            ]}
+        />
+    </Fragment>
+
+    <p>
+        This blog post is meant to be an updated write-up of an old <a
+            href="https://www.reddit.com/r/Tetris/comments/1fgy7g1/a_4line_pc_is_always_possible_99975_of_the_time/"
+            >Reddit post</a
+        > I wrote at 5AM to explain Perfect Tetris.
+    </p>
+    <p>
+        If you're not familiar with modern Tetris or perfect clears, you might
+        want to check out these links before reading:
+    </p>
+    <Links
+        links={[
+            {
+                href: "https://harddrop.com/wiki/Perfect_clear",
+                text: "Perfect clear (aka PC)",
+            },
+            {
+                href: "https://harddrop.com/wiki/Category:Rotation_systems",
+                text: "Rotation system",
+            },
+        ]}
+    />
+
+    <section id="background">
+        <h2>Background</h2>
+        <p>
+            <!-- TODO: link to budget tetris -->
+            This project is part of my (now somewhat abandoned) goal of making the
+            strongest Tetris bot.
+        </p>
+        <p>
+            To assist the bot, I made a dedicated PC solver. The initial version
+            was a brute-force backtracking solver, which worked but wasn't super
+            fast. I wrote another solver based on the <a
+                href="https://en.wikipedia.org/wiki/Exact_cover">exact cover</a
+            > problem, but this required complicated post-checks, making it buggy
+            and slow.
+        </p>
+        <p>
+            I wanted a solver that was agnostic to the rotation system. I
+            settled on writing yet another backtracking solver due to their
+            flexibility, and tried to reduce the branching factor as much as
+            possible and added a heuristic to reduce the time to first solution.
+        </p>
+        <p>
+            To answer some "why didn't I do X?" questions, I wanted these
+            constraints on the solver:
+        </p>
+        <ol>
+            <li>
+                Returns the first solution (which solution comes first can be
+                tuned using the heuristic)
+            </li>
+            <li>Is single threaded (more CPU available to the bot)</li>
+            <li>
+                Has no large pre-computed tables (final binary size should be
+                &lt;2MB)
+            </li>
+            <li>Minimises memory usage (this correlates with speed)</li>
+        </ol>
+        <p role="note">
+            The bot eventually got good enough that it would occassionally PC
+            without any additional guidance, lol.
+        </p>
+    </section>
+
+    <section id="first-there-was-dfs">
+        <header>
+            <h2>First, there was DFS</h2>
+            <div role="doc-subtitle">
+                Solve time: <i>EXPTIME, EXPSPACE, and everything bad</i>
+            </div>
+        </header>
+        <p>
+            I started off by re-writing my first solver from C# into Zig. It was
+            a basic depth-first backtracking solver. The only optimisations so
+            far were representing the 10x40 playfield as 40 u16 bitfields (same
+            as my Tetris engine) and memoizing previous states to avoid
+            redundant branches. The result was similarly slow.
+        </p>
+        <p>
+            In the header of each section, I'll write down the mean solve time
+            of the same 100 random 4-line PCs, to give a concrete sense of my
+            progress. Due to a bug accidentally speeding the initial version up,
+            I don't have any fair performance numbers, but it was <i>slow</i>.
+        </p>
+    </section>
+
+    <section id="prune-the-walled-gardens">
+        <header>
+            <h2>Pruning the walled gardens (mod 4)</h2>
+            <div role="doc-subtitle">Solve time: 754.2ms</div>
+        </header>
+        <p>
+            First, let's reduce the branching factor. Early on in the search,
+            it's not obvious if a setup does not lead to a solution. But as the
+            playfield gets more filled up, many candidates end up being dead
+            ends, and we can detect these only by looking at the playfield.
+        </p>
+        <figure>
+            <div class="tetris">
+                ⬛⬛⬛⬛🟩🟩⬛⬛⬛⬛<br />
+                ⬛⬛⬛🟩🟩🟪🟥🟥⬛⬛<br />
+                🟨🟨🟦🟦🟦🟪🟪🟥🟥⬛<br />
+                🟨🟨⬛⬛🟦🟪🟫🟫🟫🟫<br />
+            </div>
+            <figcaption>
+                The worst PC opener possible. Also, why is there no cyan square
+                emoji?
+            </figcaption>
+        </figure>
+        <p>
+            Look at the setup above. Give yourself any number of any tetromino
+            you like. A 4-line PC is completely impossible!
+        </p>
+        <figure>
+            <div class="tetris">
+                0️⃣0️⃣0️⃣0️⃣🟩🟩1️⃣1️⃣1️⃣1️⃣<br />
+                0️⃣0️⃣0️⃣🟩🟩🟪🟥🟥1️⃣1️⃣<br />
+                🟨🟨🟦🟦🟦🟪🟪🟥🟥1️⃣<br />
+                🟨🟨0️⃣0️⃣🟦🟪🟫🟫🟫🟫<br />
+            </div>
+            <figcaption>The worst PC opener possible, annotated.</figcaption>
+        </figure>
+        <p>
+            Notice that the 2 columns in the middle form a solid wall. Pieces
+            that you place can "go through" solid rows (because of cleared
+            lines), but not
+        </p>
+        <figure>
+            <div class="tetris">
+                🟥🟥🟫🟫🟫🟫🟧🟨🟨🟦<br />
+                🟪🟥🟥🟨🟨🟪🟧🟨🟨🟦<br />
+                🟪🟪🟩🟩🟪🟪🟧🟧🟦🟦<br />
+                🟪🟩🟩🟨🟨🟪🟫🟫🟫🟫<br />
+            </div>
+            <figcaption>
+                Average PC. Yellow O piece "goes through" a solid row.
+            </figcaption>
+        </figure>
+        <p>
+            through solid columns. This effectively splits the empty area into 2
+            zones that we have to fill separately. Each piece occupies 4 cells,
+            so for a PC to be possible, the area of both zones must be a
+            multiple of 4. (zone0 = 9, zone1 = 7, so no PC here)
+        </p>
+        <p>Furthermore, solid "walls" can span 2 columns, even diagonally.</p>
+        <figure>
+            <div class="tetris">
+                🟫0️⃣0️⃣0️⃣🟨🟨1️⃣1️⃣🟩🟩<br />
+                🟫0️⃣0️⃣0️⃣🟨🟨1️⃣🟩🟩🟪<br />
+                🟫0️⃣0️⃣🟧1️⃣🟦🟦🟦🟪🟪<br />
+                🟫🟧🟧🟧1️⃣1️⃣1️⃣🟦2️⃣🟪<br />
+            </div>
+            <figcaption>The worst-er PC opener possible, annotated.</figcaption>
+        </figure>
+        <p>
+            Following the "no through-columns" rule, the setup above is split
+            into 3 zones. If you play around with this setup, you'll realise
+            that the rule can apply to walls spanning 3 columns, further
+            splitting the top and bottom of zone1 into 2 zones.
+        </p>
+        <p>
+            In fact, there can be valid walls that span any number of columns,
+            but detecting them becomes increasingly complicated for deminishing
+            returns. I capped the code at 2 columns, as the 2-column case can be
+            collapsed into the 1-column case with a single line of code. The
+            exact details of the bit hacks used are left as <a
+                href="https://codeberg.org/TemariVirus/perfect-tetris/src/commit/830d3f9cfd121c0141fedf3bd0facb017128e74a/src/pc.zig#L283-L321"
+                >an exercise to the reader</a
+            >.
+        </p>
+    </section>
+
+    <section id="no-not-that-ai">
+        <header>
+            <h2>No, not that kind of AI!</h2>
+            <div role="doc-subtitle">Solve time: 206.1ms</div>
+        </header>
+        <p>
+            I tokenmaxxed and the AI overlords made my <a
+                href="https://xcancel.com/bunjavascript/status/2048427636414923250"
+                >code 4x faster</a
+            > 💸💨💨💨💨. Yeah, no lol.
+        </p>
+        <p>
+            Remember that Tetris bot I mentioned at the start of this post? The
+            bot actually has a tiny AI to evaluate playfield states. What if we
+            reused it as a heuristic for choosing which moves to try out first?
+        </p>
+        <p>
+            At first, it didn't make much difference. After including holds in
+            the set of moves to rank, there was a surprisingly large speedup.
+            This idea shouldn't have worked, but it did somehow.
+        </p>
+        <p>
+            I also had to re-write the feature extration code to work on the
+            bitfields directly to be fast. If only my Python notebooks could do
+            feature extraction in 43 nanoseconds.
+        </p>
+        <p>
+            Using a heuristic also meant that it could solve much larger PCs,
+            like say, <a
+                href="https://fumen.zui.jp/?D115@vhEJEYGBFLDmClcJSAVDEHBEooRBJoAVBJO1LCqurg?CMdNPCpurgCMtbMCK3TxCM3TxCK+TFD6untCMuSgCMd9wC6?/dgCzCBAAJQBJ8AJoAJUAvhAWvBvhtUlBTrBqaB1xBvtBpLBWrBNsBJbBUmBzbBqhBvRBxiBGtB0sBThB9tByxB3sBzfBXnBFmBpoBmnBCrBUqBUrB1xBXnBKoBpkB2qBzgBCnBPbBpoBzlBFgBWxBkhB9oBftBisB"
+                >20 lines</a
+            > in 23ms. Larger PCs should technically be easier to solve since the
+            number of possible solutions grows exponentially, but if it takes a bad
+            branch early on it gets stuck for a loooong time. I don't know of any
+            other software that can solve PCs of more than 6 lines in a reasonable
+            amount of time.
+        </p>
+    </section>
+
+    <section id="save-your-cache">
+        <header>
+            <h2>Save your cache💸</h2>
+            <div role="doc-subtitle">Solve time: 92.059ms</div>
+        </header>
+        <p>
+            Inspired by <a href="https://xkcd.com/1732/">xkcd 1732</a>:
+        </p>
+        <figure>
+            <div class="tetris emojis-10">
+                ⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛<br />
+                ⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛<br />
+                ⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛<br />
+                ⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛<br />
+                ⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛<br />
+                ⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛<br />
+                ⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛<br />
+                ⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛<br />
+                ⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛<br />
+                ⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛<br />
+                ⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛<br />
+                ⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛<br />
+                ⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛<br />
+                ⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛<br />
+                ⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛<br />
+                ⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛<br />
+                ⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛<br />
+                ⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛<br />
+                ⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛<br />
+                ⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛<br />
+                ⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛<br />
+                ⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛<br />
+                ⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛<br />
+                ⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛<br />
+                ⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛<br />
+                ⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛<br />
+                ⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛<br />
+                ⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛<br />
+                ⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛<br />
+                ⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛<br />
+                ⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛<br />
+                ⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛<br />
+                ⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛<br />
+                ⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛<br />
+                ⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛<br />
+                ⬛⬛⬛⬛⬛⬛⬛⬛⬛⬛<br />
+                🟥🟥⬛⬛⬛⬛🟧🟨🟨🟦<br />
+                🟪🟥🟥⬛⬛⬛🟧🟨🟨🟦<br />
+                🟪🟪🟩🟩⬛⬛🟧🟧🟦🟦<br />
+                🟪🟩🟩⬛⬛⬛🟫🟫🟫🟫<br />
+            </div>
+            <figcaption>Typical 10x40 playfield.</figcaption>
+        </figure>
+        <p>
+            So far the solver has been working with 10x40 playfields, as that is
+            the size mandated by the Tetris Guideline. But when finding a PC,
+            usually only the first 4 or 6 rows are ever touched.
+        </p>
+        <p>
+            The playfield and held piece combined are enough to determine if
+            we've seen a state before, so let's cap the solver at 6 rows and
+            store them in a u64. That leaves 4 bits free to store the held piece
+            type. If a solve requires more rows, we switch back to the old
+            playfield representation.
+        </p>
+        <p>
+            This is a 90% reduction in the only place that allocates heap
+            memory. Most solves use about as much memory as there is L2 cache on
+            a single CPU core!
+        </p>
+    </section>
+
+    <section id="ai-again">
+        <header>
+            <h2>AI again?</h2>
+            <div role="doc-subtitle">Solve time: 39.823ms</div>
+        </header>
+        <p>
+            What if, instead of using a pre-existing AI heuristic not trained
+            specifically for solving PCs, we trained an AI specifically for
+            solving PCs?
+        </p>
+        <p>Yeah, I don't know why I didn't think of it earlier.</p>
+        <p>
+            The AI was trained with a genetic algorithm called <a
+                href="https://en.wikipedia.org/wiki/Neuroevolution_of_augmenting_topologies"
+                >NEAT</a
+            >, so after porting my old NEAT implementation over, I changed the
+            goal to "solve PCs as quickly as possible" and boom.
+        </p>
+        <p role="note">
+            The AI could have had any number of layers but chose a <a
+                href="https://codeberg.org/TemariVirus/perfect-tetris/src/commit/830d3f9cfd121c0141fedf3bd0facb017128e74a/NNs/Fast3.json"
+                >linear equation</a
+            > to speed itself up lol.
+        </p>
+    </section>
+
+    <section id="geddan">
+        <header>
+            <h2>Geddan</h2>
+            <div role="doc-subtitle">Solve time: 30.893ms</div>
+        </header>
+        <p>
+            My code to find all valid placements was pretty lenient to ensure
+            that it found all the possible placements. A bit too lenient, in
+            fact. Sometimes a wall kick would send the current piece entirely
+            above the playfield, and it would burn cycles doing
+            <a href="https://www.youtube.com/watch?v=NKxL27PS4pQ">this</a> until it
+            explored the entire invalid area above.
+        </p>
+        <p>
+            Adding a check to stop it once it got too high sped things up a bit.
+        </p>
+    </section>
+
+    <section id="parity-checks">
+        <header>
+            <h2>Parity checks</h2>
+            <div role="doc-subtitle">
+                Solve time: <s>17.215</s> 25.327ms
+            </div>
+        </header>
+        <p>
+            After reading up more about Perfect Clear theory, I came across the
+            idea of column and checkerboard <a
+                href="https://harddrop.com/wiki/Parity">parity</a
+            >.
+        </p>
+        <p>
+            To clear the entire playfield and perform a perfect clear, both
+            parities must end at 0. Checkerboard parity is especially
+            interesting as it is only affected by T pieces. By looking at the
+            piece queue, we can determine the maximum amount the parity can
+            change. If the current parity is greater than that, we prune out the
+            candidate solution.
+        </p>
+        <p>
+            ...is what I thought would work. Unfortunely, I forgot to account
+            for line clears, which also affect checkerboard parity. Column
+            parity is unaffected by line clears, but so many pieces can affect
+            it that it's not very useful.
+        </p>
+        <p>
+            This bug was present in version 1.0.0 and it wasn't until I tested
+            the solver on all 4-line PC queues (yes, all 79,516,080 of them)
+            that I realised I was missing a solution in 0.01% of them.
+        </p>
+        <p>
+            In a last ditch effort, I addded checkerboard and column parity to
+            the list of features fed into the heuristic AI, and got a slight
+            speedup.
+        </p>
+    </section>
+
+    <section id="o-spins-are-real">
+        <header>
+            <h2>O-spins are (usually not) real</h2>
+            <div role="doc-subtitle">Solve time: 22.665ms</div>
+        </header>
+        <p>
+            I wanted my solver to be agnostic to the rotation system, which
+            meant trying to rotate O pieces just in case there was an <a
+                href="https://www.youtube.com/watch?v=kcqZbUfecqQ">O-spin</a
+            > available.
+        </p>
+        <p>
+            To my surprise, most mainstream rotation systems that people care
+            about (SRS, SRS+, Tetr.io, etc.) do not have any O kicks, making
+            O-spins impossible. To optimise for this case, I added an initial
+            check through the kick table for O kicks, and if there are none,
+            don't bother rotating O pieces.
+        </p>
+    </section>
+
+    <section id="precomputed-collisions">
+        <header>
+            <h2>Pre-computed collisions</h2>
+            <div role="doc-subtitle">Solve time: 11.452ms</div>
+        </header>
+        <p>
+            There's a golden rule in optimisation: if something is cheap to
+            compute, don't bother storing it. Detecting if the current piece
+            collides with the playfield takes only a few logical and arithmatic
+            operations on integers, which sounds extremely cheap.
+        </p>
+        <p>
+            I ran the program through a profiler, and found that this cheap
+            routine was called so often that it made up a large part of the
+            runtime.
+        </p>
+        <p>
+            When searching for possible placements, a piece is usually checked
+            against the same spot in the playfield for collisions multiple
+            times, so what if we just computed the collisions for all positions
+            once and reused that?
+        </p>
+        <p>
+            Well, turns out my bit hacks were not as fast as I thought they were
+            and this lead to a pretty dramatic speedup.
+        </p>
+    </section>
+
+    <section id="benchmarks">
+        <h2>Benchmarks</h2>
+        <p>
+            I made a few extra small optimisations that don't warrant their own
+            section:
+        </p>
+        <ul>
+            <li>
+                <a
+                    href="https://codeberg.org/TemariVirus/perfect-tetris/commit/94705146def4cbd2855c50eee105af7e3d58ec98"
+                    >Removed a redundant bounds check</a
+                >
+            </li>
+            <li>
+                <a
+                    href="https://codeberg.org/TemariVirus/perfect-tetris/commit/6fdbd2c243418665449e0b761c22f24fd53761e0"
+                    >Used Zig's @branchHint to steer the optimiser</a
+                >
+            </li>
+            <li>
+                <a
+                    href="https://codeberg.org/TemariVirus/perfect-tetris/commit/dd69069d63f6f37223311785c80aac0294811b2b"
+                    >Reduced the size of stack-allocated data structures</a
+                >
+            </li>
+        </ul>
+        <p>
+            Here's the final benchmark result, aggregated over 200 consecutive
+            PCs:
+        </p>
+        <table class="nice-table">
+            <caption>7-bag randomiser, SRS+</caption>
+            <thead>
+                <tr>
+                    <th>PC height</th><th>Mean time</th><th>Max time</th>
+                    <th>Mean memory</th><th>Max memory</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>4</td><td>10.697ms</td><td>237.6ms</td><td>245.4KiB</td>
+                    <td>9.455MiB</td>
+                </tr>
+                <tr>
+                    <td>6</td><td>9.253ms</td><td>217.8ms</td><td>173.8KiB</td>
+                    <td>2.430MiB</td>
+                </tr>
+            </tbody>
+        </table>
+        <p>
+            As far as I know, this makes Perfect Tetris the fastest
+            single-solution PC solver. Though, it was the only single-solution
+            PC solver I could find.
+        </p>
+        <p>
+            No benchmark section would be complete without a comparison to other
+            software:
+        </p>
+        <table class="nice-table">
+            <caption>4-line PC, SRS</caption>
+            <thead>
+                <tr>
+                    <th>Solver</th><th>Time (ms)</th><th>Threads</th>
+                    <th>Solutions found</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><th colspan={4}>Queue ZLSJIOTZTIS</th></tr>
+                <tr>
+                    <td>Tetra tools</td><td>2026</td><td>1</td><td>1824</td>
+                </tr>
+                <tr><td>pcf</td><td>31.60</td><td>16</td><td>187</td></tr>
+                <tr>
+                    <td>Perfect Tetris</td><td>9.763</td><td>1</td><td>1</td>
+                </tr>
+                <tr class="text-gray-400">
+                    <td>Perfect Tetris (BFS)</td><td>34226</td><td>1</td>
+                    <td>1824</td>
+                </tr>
+
+                <tr><th colspan={4}>Queue JIOSTLZTLIS</th></tr>
+                <tr>
+                    <td>Tetra tools</td><td>4230</td><td>1</td><td>9197</td>
+                </tr>
+                <tr><td>pcf</td><td>70.19</td><td>16</td><td>2316</td></tr>
+                <tr>
+                    <td>Perfect Tetris</td><td>1.044</td><td>1</td><td>1</td>
+                </tr>
+                <tr class="text-gray-400">
+                    <td>Perfect Tetris (BFS)</td><td>56932</td><td>1</td>
+                    <td>9189</td>
+                </tr>
+
+                <tr><th colspan={4}>Queue OIZSJLTZTIJ</th></tr>
+                <tr>
+                    <td>Tetra tools</td><td>1687</td><td>1</td><td>4199</td>
+                </tr>
+                <tr><td>pcf</td><td>62.07</td><td>16</td><td>1669</td></tr>
+                <tr>
+                    <td>Perfect Tetris</td><td>.7391</td><td>1</td><td>1</td>
+                </tr>
+                <tr class="text-gray-400">
+                    <td>Perfect Tetris (BFS)</td><td>32423</td><td>1</td>
+                    <td>4198</td>
+                </tr>
+            </tbody>
+        </table>
+        <ul>
+            <li>
+                <a href="https://github.com/wirelyre/tetra-tools">Tetra tools</a
+                > runs on the browser and returns all solutions. It uses a 23MB pre-computed
+                table.
+            </li>
+            <li>
+                <a href="https://github.com/MinusKelvin/pcf">pcf</a> runs natively
+                and returns some solutions. It does not use a pre-computed table.
+            </li>
+            <li>
+                <a href="https://codeberg.org/TemariVirus/perfect-tetris"
+                    >Perfect Tetris</a
+                > runs natively and returns the first solution. It does not use a
+                pre-computed table.
+            </li>
+            <li>
+                <a
+                    href="https://github.com/TemariVirus/perfect-tetris/tree/all-solver"
+                    >Perfect Tetris (BFS)</a
+                > is a slight re-write of Perfect Tetris to perform a breadth-first
+                search for all solutions, to provide a fair comparision to other solvers.
+                No extra optimisations were made. (The no. of solutions found being
+                lower than Tetra tool's is likely a bug as this version was not written
+                with much thought)
+            </li>
+        </ul>
+        <p>
+            There are definitely a lot of optimisations to be made to find
+            multiple solutions faster, but when it comes to finding a single
+            solution, Perfect Tetris is over an order of magnitude faster than
+            pcf, which is written by the same person who wrote Cold Clear,
+            perhaps one of the <a
+                href="https://www.youtube.com/watch?v=1_lHmkdaYhU"
+                >strongest Tetris bots ever made</a
+            >.
+        </p>
+    </section>
+</BlogLayout>

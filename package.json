@@ -1,0 +1,20 @@
+{
+  "name": "portfolio",
+  "private": true,
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "bun run build && astro preview"
+  },
+  "devDependencies": {
+    "@types/bun": "1.2.15"
+  },
+  "peerDependencies": {
+    "typescript": "5.9.3"
+  },
+  "dependencies": {
+    "@tailwindcss/vite": "4.2.4",
+    "astro": "5.17.1",
+    "tailwindcss": "4.2.4"
+  }
+}

@@ -1,0 +1,129 @@
+---
+import { Picture } from "astro:assets";
+import ProjectCard from "../components/ProjectCard.astro";
+import MainLayout from "../layouts/MainLayout.astro";
+
+import BannerImg from "../images/banner.png";
+import PerfectTetrisImg from "../images/perfect-tetris.png";
+
+const base_url = import.meta.env.BASE_URL;
+---
+
+<style>
+    .banner .title {
+        color: white;
+        font-size: 2rem;
+        font-weight: 700;
+        margin-top: 1rem;
+    }
+    .banner [role="doc-subtitle"] {
+        color: #1eb01e;
+        font-size: 1.5rem;
+        background-color: #000000;
+        max-width: min-content;
+        margin: 0 auto;
+        padding: 0 0.75rem;
+    }
+    #banner-img {
+        filter: brightness(0.55);
+    }
+
+    h2 {
+        font-size: 2rem;
+        font-weight: 600;
+        color: var(--title-color);
+        margin-bottom: 1rem;
+        margin-top: 1.5rem;
+    }
+
+    .container {
+        max-width: 1500px;
+        padding: 0 var(--blog-pad);
+        margin: 0 auto;
+    }
+
+    #about {
+        margin-left: auto;
+        margin-right: auto;
+        max-width: 120ch;
+        text-indent: 4ch;
+    }
+
+    .project-grid {
+        grid-template-columns: repeat(auto-fill, minmax(min(420px, 100%), 1fr));
+    }
+
+    @media (min-width: 42rem) {
+        .banner-text {
+            position: absolute;
+            width: 100%;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+        .banner .title {
+            font-size: 4rem;
+            margin-top: 0;
+        }
+        .banner [role="doc-subtitle"] {
+            font-size: 2rem;
+        }
+    }
+</style>
+<MainLayout title="TEMARI VÍRUS's Website">
+    <div class="banner relative">
+        <Picture
+            id="banner-img"
+            src={BannerImg}
+            alt="Banner showing collage of my projects"
+            layout="full-width"
+            loading="eager"
+            quality="max"
+        />
+        <div class="banner-text text-center">
+            <h1 class="title"><i>TEMARI VÍRUS</i></h1>
+            <p role="doc-subtitle"><i>Programmer</i></p>
+        </div>
+    </div>
+
+    <div class="container">
+        <article id="about">
+            <h2 class="text-center">About Me</h2>
+            <p>
+                I'm currently a university student majoring in software
+                engineering. When I'm not coding up a school project, I'm either
+                watching Hololive clips or programming yet another pet project.
+                I've worked on a <a
+                    href="https://github.com/TemariVirus/Holocure-Auto-Fishing-Bot"
+                    >HoloCure fishing bot</a
+                >, a blazingly fast <a href={base_url + "blog/2026-05-13"}
+                    >Tetris perfect clear solver</a
+                >, playing <a href="https://www.youtube.com/watch?v=S6zOcAdm1cY"
+                    >Bad Apple to a microcontroller</a
+                >, and countless other projects.
+            </p>
+            <p>
+                I love writing lightweight and optimised software. Phrased
+                differently, I like being in control of what my program does and
+                what gets emitted into the binary. This has led me to learn more
+                about low-level programming and become a supporter of free and
+                open-source software. While I admit I love convenience too much
+                to be a FOSS purist, most of my projects are licensed under FOSS
+                licences and I've made
+                <a href="https://codeberg.org/ziglang/zig/pulls/31537"
+                    >contributions</a
+                > to existing FOSS projects.
+            </p>
+        </article>
+
+        <article id="projects">
+            <h2 class="text-center">My Projects</h2>
+            <div class="grid gap-4 justify-center project-grid">
+                <ProjectCard
+                    title="Perfect Tetris"
+                    img={PerfectTetrisImg}
+                    link={base_url + "project/perfect-tetris"}
+                />
+            </div>
+        </article>
+    </div>
+</MainLayout>

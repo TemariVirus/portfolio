@@ -1,0 +1,19 @@
+---
+interface Props {
+    links: { href: string; text: string }[];
+}
+
+const { links } = Astro.props;
+---
+
+<style>
+    div {
+        display: flex;
+        gap: 2ch;
+        flex-wrap: wrap;
+        line-height: 1;
+    }
+</style>
+<div>
+    {links.map((link) => <a href={link.href}>{link.text}</a>)}
+</div>
