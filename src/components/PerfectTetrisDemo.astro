@@ -1,0 +1,351 @@
+<style>
+    pc-demo {
+        width: 100%;
+    }
+
+    .controls {
+        display: flex;
+        flex-direction: row;
+        flex-wrap: wrap;
+        margin-bottom: 1rem;
+        gap: 0.75rem;
+    }
+    .controls > :nth-last-child(2) {
+        margin-right: auto;
+    }
+
+    .new-queue-btn {
+        border-radius: 6px;
+        padding: 0 6px;
+    }
+
+    input {
+        width: calc(16ch + 12px);
+        background-color: var(--title-color);
+        color: black;
+        border-radius: 6px;
+        padding: 0 6px;
+    }
+
+    button {
+        background-color: var(--title-color);
+        color: black;
+    }
+    button[aria-label="Previous"],
+    button[aria-label="Next"] {
+        border-radius: 6px;
+        padding: 0 8px;
+    }
+
+    canvas {
+        width: 100%;
+        object-fit: contain;
+    }
+
+    figcaption {
+        font-size: 1rem;
+    }
+
+    .error {
+        color: #ff3850;
+        font-weight: 600;
+    }
+</style>
+
+<pc-demo>
+    <noscript>
+        <p class="error">This demo requires JavaScript to work.</p>
+    </noscript>
+
+    <figure>
+        <div class="controls">
+            <button class="new-queue-btn">New Queue</button>
+            <input aria-label="Queue" placeholder="queue" />
+            <div class="frame-buttons">
+                <button aria-label="Previous">&lt;</button>
+                <button aria-label="Next">&gt;</button>
+            </div>
+        </div>
+        <canvas aria-label="PC solution" width="10" height="6"></canvas>
+        <figcaption></figcaption>
+    </figure>
+</pc-demo>
+
+<script>
+    import PcWorker from "./PerfectTetrisDemoWorker.ts?worker&inline";
+
+    const ROWS = 6;
+    const COLUMNS = 10;
+    const QUEUE_LEN = (ROWS * COLUMNS) / 4 + 1;
+    const COLORS = {
+        N: "#000000", // Empty
+        G: "#808080", // Garbage
+        T: "#C400C4",
+        O: "#F3F34E",
+        Z: "#C40000",
+        S: "#00C400",
+        L: "#C47E00",
+        J: "#0000C4",
+        I: "#4EF3F3",
+    };
+
+    function formatDuration(millis: number): string {
+        if (millis < 1000) return `${millis.toFixed(0)}ms`;
+        let seconds = millis / 1000;
+        if (seconds < 60) return `${seconds.toFixed(3)}s`;
+        const minutes = Math.floor(seconds / 60);
+        seconds %= 60;
+        return `${minutes.toFixed(0)}m${seconds.toFixed(0)}s`;
+    }
+
+    function shuffle(arr: Array<any>) {
+        for (let i = 0; i < arr.length; i++) {
+            const swap = i + Math.floor(Math.random() * (arr.length - i));
+            const tmp = arr[swap];
+            arr[swap] = arr[i];
+            arr[i] = tmp;
+        }
+    }
+
+    function sevenBagQueue(len: number) {
+        const bag = "TOZSLJI".split("");
+        let queue = new Array(len);
+        for (let i = 0; i < len; i++) {
+            if (i % 7 === 0) shuffle(bag);
+            queue[i] = bag[i % 7];
+        }
+        return queue.join("");
+    }
+
+    class PcDemo extends HTMLElement {
+        worker: Worker | null = null;
+        interval: NodeJS.Timeout | null = null;
+        last_queue: string = "";
+
+        garbages: boolean[] = new Array(ROWS * COLUMNS).fill(false);
+        solution_frames: string[] = [];
+        frame_idx: number = 0;
+        infoText: HTMLElement = undefined as any;
+        canvas_scale: number = 100;
+
+        hasSolution() {
+            return this.solution_frames.length > 0;
+        }
+
+        currentFrame(): string {
+            return this.hasSolution()
+                ? this.solution_frames[this.frame_idx]!
+                : this.garbages.map((g) => (g ? "G" : "N")).join("");
+        }
+
+        goPreviousFrame(ctx: CanvasRenderingContext2D) {
+            if (this.frame_idx > 0) {
+                this.frame_idx--;
+                this.render(ctx, this.currentFrame());
+            }
+        }
+
+        goNextFrame(ctx: CanvasRenderingContext2D) {
+            if (this.frame_idx < this.solution_frames.length - 1) {
+                this.frame_idx++;
+                this.render(ctx, this.currentFrame());
+            }
+        }
+
+        connectedCallback() {
+            const new_btn = this.querySelector(
+                "button.new-queue-btn",
+            ) as HTMLButtonElement;
+            const queue_input = this.querySelector(
+                'input[aria-label="Queue"]',
+            ) as HTMLInputElement;
+            const canvas = this.querySelector(
+                'canvas[aria-label="PC solution"]',
+            ) as HTMLCanvasElement;
+            const prev_btn = this.querySelector(
+                'button[aria-label="Previous"]',
+            ) as HTMLButtonElement;
+            const next_btn = this.querySelector(
+                'button[aria-label="Next"]',
+            ) as HTMLButtonElement;
+            this.infoText = this.querySelector("figcaption")!;
+
+            const ctx = canvas.getContext("2d")!;
+            this.resizeCallback();
+            this.render(ctx, this.currentFrame());
+
+            queue_input.value = sevenBagQueue(QUEUE_LEN);
+            this.invalidateSolution(ctx, queue_input.value);
+
+            window.addEventListener("resize", () => {
+                this.resizeCallback();
+                this.render(ctx, this.currentFrame());
+            });
+            new_btn.addEventListener("click", () => {
+                queue_input.value = sevenBagQueue(QUEUE_LEN);
+                this.invalidateSolution(ctx, queue_input.value);
+            });
+            queue_input.addEventListener("beforeinput", (e) => {
+                if (!e.data) return;
+
+                const new_pieces = e.data
+                    .toUpperCase()
+                    .split("")
+                    .filter((c) => "TOZSLJI".includes(c))
+                    .join("");
+                if (new_pieces === e.data) return;
+
+                e.preventDefault();
+                if (new_pieces.length === 0) return;
+
+                const useExecCommand =
+                    typeof document.execCommand === "function" &&
+                    document.queryCommandEnabled("insertText");
+                if (useExecCommand) {
+                    document.execCommand("insertText", false, new_pieces);
+                } else {
+                    const cursor =
+                        queue_input.selectionStart! + new_pieces.length;
+                    queue_input.value =
+                        queue_input.value.slice(
+                            0,
+                            queue_input.selectionStart!,
+                        ) +
+                        new_pieces +
+                        queue_input.value.slice(queue_input.selectionEnd!);
+                    queue_input.setSelectionRange(cursor, cursor);
+                    queue_input.dispatchEvent(new Event("input"));
+                }
+            });
+            queue_input.addEventListener("input", () => {
+                if (queue_input.value !== this.last_queue) {
+                    this.invalidateSolution(ctx, queue_input.value);
+                }
+                this.last_queue = queue_input.value;
+            });
+            canvas.addEventListener("click", (e) => {
+                const x = Math.floor(
+                    (e.offsetX / canvas.offsetWidth) * COLUMNS,
+                );
+                const y = Math.floor((e.offsetY / canvas.offsetHeight) * ROWS);
+                const index = (ROWS - y - 1) * COLUMNS + x;
+                this.garbages[index] = !this.garbages[index];
+                this.invalidateSolution(ctx, queue_input.value);
+            });
+            prev_btn.addEventListener(
+                "click",
+                this.goPreviousFrame.bind(this, ctx),
+            );
+            next_btn.addEventListener(
+                "click",
+                this.goNextFrame.bind(this, ctx),
+            );
+            window.addEventListener("keydown", (e) => {
+                const target_tag = (e.target as HTMLElement).tagName;
+                if (
+                    target_tag === "INPUT" ||
+                    target_tag === "TEXTAREA" ||
+                    target_tag === "SELECT"
+                ) {
+                    return;
+                }
+
+                switch (e.key) {
+                    case "ArrowLeft":
+                        this.goPreviousFrame(ctx);
+                        break;
+                    case "ArrowRight":
+                        this.goNextFrame(ctx);
+                        break;
+                }
+            });
+        }
+
+        connectedMoveCallback() {
+            // Empty, but needed to prevent duplicate event listeners when
+            // the element is moved
+        }
+
+        resizeCallback() {
+            const canvas = this.querySelector(
+                'canvas[aria-label="PC solution"]',
+            ) as HTMLCanvasElement;
+            this.canvas_scale = Math.ceil(
+                (canvas.offsetWidth / COLUMNS) * window.devicePixelRatio,
+            );
+            canvas.width = COLUMNS * this.canvas_scale;
+            canvas.height = ROWS * this.canvas_scale;
+        }
+
+        render(ctx: CanvasRenderingContext2D, frame: string) {
+            ctx.save();
+            ctx.scale(this.canvas_scale, this.canvas_scale);
+            for (let y = 0; y < ROWS; y++) {
+                for (let x = 0; x < COLUMNS; x++) {
+                    const color = frame[y * COLUMNS + x] as keyof typeof COLORS;
+                    ctx.fillStyle = COLORS[color];
+                    ctx.fillRect(x, ROWS - y - 1, 1, 1);
+                }
+            }
+            ctx.restore();
+        }
+
+        invalidateSolution(ctx: CanvasRenderingContext2D, queue: string) {
+            if (this.worker) {
+                this.worker.terminate();
+            }
+            if (this.interval) {
+                clearInterval(this.interval);
+            }
+            this.solution_frames = [];
+            this.frame_idx = 0;
+            this.render(ctx, this.currentFrame());
+
+            if (queue.match(/^[TOZSLJI]+$/gu) === null) {
+                this.infoText.classList.value = "error";
+                this.infoText.innerText = `Invalid queue.`;
+                return;
+            }
+
+            this.worker = new PcWorker();
+            this.worker.onmessage = (e) => {
+                const {
+                    time,
+                    frames,
+                }: {
+                    time: number;
+                    frames: string[] | null;
+                } = e.data;
+                clearInterval(this.interval!);
+                if (frames) {
+                    this.solution_frames = frames;
+                    this.frame_idx = 0;
+                    this.render(ctx, this.currentFrame());
+                    this.infoText.classList.value = "";
+                    this.infoText.innerText = `Found solution in ${formatDuration(time)}.`;
+                } else {
+                    this.infoText.classList.value = "error";
+                    this.infoText.innerText = `No solution. (${formatDuration(time)})`;
+                }
+            };
+
+            const start = performance.now();
+            this.interval = setInterval(() => {
+                const time = performance.now() - start;
+                this.infoText.classList.value = "";
+                this.infoText.innerText = `Finding solution for ${formatDuration(time)}...`;
+            }, 33);
+
+            this.worker.postMessage({
+                wasmModule,
+                board: this.garbages,
+                queue,
+            });
+        }
+    }
+
+    const wasmModule = await WebAssembly.compileStreaming(
+        fetch(`${import.meta.env.BASE_URL}bin/perfect-tetris-demo.wasm`),
+    );
+    customElements.define("pc-demo", PcDemo);
+</script>

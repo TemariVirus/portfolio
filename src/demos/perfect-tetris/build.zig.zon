@@ -1,0 +1,17 @@
+.{
+    .name = .perfect_tetris_demo,
+    .version = "0.0.0",
+    .fingerprint = 0x2ada3d4245af3902,
+    .minimum_zig_version = "0.14.1",
+    .dependencies = .{
+        .perfect_tetris = .{
+            .url = "git+https://github.com/TemariVirus/perfect-tetris#c29f06101263e2cf556713cfd272e420cf51e524",
+            .hash = "perfect_tetris-1.3.2-aVUoA2Z9AwDXhg_odAN_WGhQLo8qNAmFDz8rfsuFk24R",
+        },
+    },
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "main.zig",
+    },
+}

@@ -1,5 +1,6 @@
-# dependencies (bun install)
+# dependencies
 node_modules
+zig-pkg
 
 # output
 out
@@ -27,6 +28,7 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 .eslintcache
 .cache
 *.tsbuildinfo
+.zig-cache
 
 # IntelliJ based IDEs
 .idea

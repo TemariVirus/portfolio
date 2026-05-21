@@ -1,5 +1,6 @@
 ---
 import Links from "../../components/Links.astro";
+import PerfectTetrisDemo from "../../components/PerfectTetrisDemo.astro";
 import BlogLayout from "../../layouts/BlogLayout.astro";
 
 import PerfectTetrisGif from "../../images/perfect-tetris.gif";
@@ -170,5 +171,19 @@ const blog_link = base_url + "blog/2026-05-13";
         <p>Check out my <a href={blog_link}>blog post</a> for more details.</p>
     </section>
 
-    <!-- TODO: demo? -->
+    <section id="demo">
+        <h2>Demo</h2>
+        <ul>
+            <li>
+                Click "New Queue" to generate a new queue, or type one in
+                manually.
+            </li>
+            <li>Click on the playfield to add/remove garbage.</li>
+            <li>
+                Use the arrow buttons or left/right arrow keys to step through
+                the solution.
+            </li>
+        </ul>
+        <PerfectTetrisDemo />
+    </section>
 </BlogLayout>
