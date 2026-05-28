@@ -60,40 +60,39 @@ figcaption {
   margin-top: 0.5rem;
 }
 
-table {
+.table-container {
   margin: calc(2 * var(--paragraph-spacing)) 0;
+  overflow-x: scroll;
+}
+
+table {
   width: 100%;
 }
-table.nice-table tr:hover {
+.table-container table tr:hover {
   background-color: var(--highlight-color);
 }
 
-table tr th {
+.table-container table tr th {
   font-weight: 600;
   font-style: italic;
-}
-table.nice-table tr th {
   text-align: center;
   border-top: var(--table-border);
   border-bottom: var(--table-border);
 }
-table.nice-table tr:last-child {
+.table-container table tr:last-child {
   border-bottom: var(--table-border);
 }
 
-table tr th,
-table tr td {
+.table-container table tr th,
+.table-container table tr td {
   padding: 0.25rem 0.5rem;
-}
-table.nice-table tr th,
-table.nice-table tr td {
   border-left: var(--table-border);
   border-right: var(--table-border);
 }
 
-table.nice-table tr td:first-child {
+.table-container table tr td:first-child {
   text-align: left;
 }
-table.nice-table tr td {
+.table-container table tr td {
   text-align: right;
 }

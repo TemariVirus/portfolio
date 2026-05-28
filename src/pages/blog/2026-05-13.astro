@@ -523,25 +523,27 @@ export const date = new Date("2026-05-13");
             Here's the final benchmark result, aggregated over 200 consecutive
             PCs:
         </p>
-        <table class="nice-table">
-            <caption>7-bag randomiser, SRS+</caption>
-            <thead>
-                <tr>
-                    <th>PC height</th><th>Mean time</th><th>Max time</th>
-                    <th>Mean memory</th><th>Max memory</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>4</td><td>10.342ms</td><td>231.386ms</td>
-                    <td>138.722KiB</td><td>3.199MiB</td>
-                </tr>
-                <tr>
-                    <td>6</td><td>9.022ms</td><td>211.971ms</td>
-                    <td>120.016KiB</td><td>3.279MiB</td>
-                </tr>
-            </tbody>
-        </table>
+        <div class="table-container">
+            <table>
+                <caption>7-bag randomiser, SRS+</caption>
+                <thead>
+                    <tr>
+                        <th>PC height</th><th>Mean time</th><th>Max time</th>
+                        <th>Mean memory</th><th>Max memory</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>4</td><td>10.342ms</td><td>231.386ms</td>
+                        <td>138.722KiB</td><td>3.199MiB</td>
+                    </tr>
+                    <tr>
+                        <td>6</td><td>9.022ms</td><td>211.971ms</td>
+                        <td>120.016KiB</td><td>3.279MiB</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
         <p>
             As far as I know, this makes Perfect Tetris the fastest
             single-solution PC solver. Though, it was the only single-solution
@@ -551,55 +553,60 @@ export const date = new Date("2026-05-13");
             No benchmark section would be complete without a comparison to other
             software:
         </p>
-        <table class="nice-table">
-            <caption>4-line PC, SRS</caption>
-            <thead>
-                <tr>
-                    <th>Solver</th><th>Time (ms)</th><th>Threads</th>
-                    <th>Solutions found</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr><th colspan={4}>Queue ZLSJIOTZTIS</th></tr>
-                <tr>
-                    <td>Tetra tools</td><td>2026</td><td>1</td><td>1824</td>
-                </tr>
-                <tr><td>pcf</td><td>31.60</td><td>16</td><td>187</td></tr>
-                <tr>
-                    <td>Perfect Tetris</td><td>9.763</td><td>1</td><td>1</td>
-                </tr>
-                <tr class="text-gray-400">
-                    <td>Perfect Tetris (BFS)</td><td>34226</td><td>1</td>
-                    <td>1824</td>
-                </tr>
+        <div class="table-container">
+            <table>
+                <caption>4-line PC, SRS</caption>
+                <thead>
+                    <tr>
+                        <th>Solver</th><th>Time (ms)</th><th>Threads</th>
+                        <th>Solutions found</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><th colspan={4}>Queue ZLSJIOTZTIS</th></tr>
+                    <tr>
+                        <td>Tetra tools</td><td>2026</td><td>1</td><td>1824</td>
+                    </tr>
+                    <tr><td>pcf</td><td>31.60</td><td>16</td><td>187</td></tr>
+                    <tr>
+                        <td>Perfect Tetris</td><td>9.763</td><td>1</td><td>1</td
+                        >
+                    </tr>
+                    <tr class="text-gray-400">
+                        <td>Perfect Tetris (BFS)</td><td>34226</td><td>1</td>
+                        <td>1824</td>
+                    </tr>
 
-                <tr><th colspan={4}>Queue JIOSTLZTLIS</th></tr>
-                <tr>
-                    <td>Tetra tools</td><td>4230</td><td>1</td><td>9197</td>
-                </tr>
-                <tr><td>pcf</td><td>70.19</td><td>16</td><td>2316</td></tr>
-                <tr>
-                    <td>Perfect Tetris</td><td>1.044</td><td>1</td><td>1</td>
-                </tr>
-                <tr class="text-gray-400">
-                    <td>Perfect Tetris (BFS)</td><td>56932</td><td>1</td>
-                    <td>9189</td>
-                </tr>
+                    <tr><th colspan={4}>Queue JIOSTLZTLIS</th></tr>
+                    <tr>
+                        <td>Tetra tools</td><td>4230</td><td>1</td><td>9197</td>
+                    </tr>
+                    <tr><td>pcf</td><td>70.19</td><td>16</td><td>2316</td></tr>
+                    <tr>
+                        <td>Perfect Tetris</td><td>1.044</td><td>1</td><td>1</td
+                        >
+                    </tr>
+                    <tr class="text-gray-400">
+                        <td>Perfect Tetris (BFS)</td><td>56932</td><td>1</td>
+                        <td>9189</td>
+                    </tr>
 
-                <tr><th colspan={4}>Queue OIZSJLTZTIJ</th></tr>
-                <tr>
-                    <td>Tetra tools</td><td>1687</td><td>1</td><td>4199</td>
-                </tr>
-                <tr><td>pcf</td><td>62.07</td><td>16</td><td>1669</td></tr>
-                <tr>
-                    <td>Perfect Tetris</td><td>.7391</td><td>1</td><td>1</td>
-                </tr>
-                <tr class="text-gray-400">
-                    <td>Perfect Tetris (BFS)</td><td>32423</td><td>1</td>
-                    <td>4198</td>
-                </tr>
-            </tbody>
-        </table>
+                    <tr><th colspan={4}>Queue OIZSJLTZTIJ</th></tr>
+                    <tr>
+                        <td>Tetra tools</td><td>1687</td><td>1</td><td>4199</td>
+                    </tr>
+                    <tr><td>pcf</td><td>62.07</td><td>16</td><td>1669</td></tr>
+                    <tr>
+                        <td>Perfect Tetris</td><td>.7391</td><td>1</td><td>1</td
+                        >
+                    </tr>
+                    <tr class="text-gray-400">
+                        <td>Perfect Tetris (BFS)</td><td>32423</td><td>1</td>
+                        <td>4198</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
         <ul>
             <li>
                 <a href="https://github.com/wirelyre/tetra-tools">Tetra tools</a

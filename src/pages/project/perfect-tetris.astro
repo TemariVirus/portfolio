@@ -79,24 +79,29 @@ const blog_link = base_url + "blog/2026-05-13";
             The benchmark results below are agregated over 200 consecutive PCs
             with a 7-bag randomiser:
         </p>
-        <table class="nice-table">
-            <thead>
-                <tr>
-                    <th>PC height</th><th>Kick system</th><th>Mean time</th>
-                    <th>Max time</th><th>Mean memory</th><th>Max memory</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>4</td><td>SRS+</td><td>10.342ms</td><td>231.386ms</td>
-                    <td>138.722KiB</td><td>3.199MiB</td>
-                </tr>
-                <tr>
-                    <td>6</td><td>SRS+</td><td>9.022ms</td><td>211.971ms</td>
-                    <td>120.016KiB</td><td>3.279MiB</td>
-                </tr>
-            </tbody>
-        </table>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>PC height</th><th>Kick system</th><th>Mean time</th>
+                        <th>Max time</th><th>Mean memory</th><th>Max memory</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>4</td><td>SRS+</td><td>10.342ms</td><td
+                            >231.386ms</td
+                        >
+                        <td>138.722KiB</td><td>3.199MiB</td>
+                    </tr>
+                    <tr>
+                        <td>6</td><td>SRS+</td><td>9.022ms</td><td>211.971ms</td
+                        >
+                        <td>120.016KiB</td><td>3.279MiB</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
         <p>
             Most PC sovlers can only return multiple solutions, and thus have
             significant latency. The fastest PC solver I could find online was
