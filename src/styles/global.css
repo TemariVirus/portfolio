@@ -45,6 +45,12 @@ ul {
   margin-left: 2ch;
 }
 
+ol.list-none,
+ul.list-none {
+  list-style-type: none;
+  margin-left: 0;
+}
+
 article a {
   text-decoration: underline;
 }

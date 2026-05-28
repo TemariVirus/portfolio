@@ -4,6 +4,7 @@ import ProjectCard from "../components/ProjectCard.astro";
 import MainLayout from "../layouts/MainLayout.astro";
 
 import BannerImg from "../images/banner.png";
+import BfpImg from "../images/bfp.png";
 import PerfectTetrisImg from "../images/perfect-tetris.png";
 
 const base_url = import.meta.env.BASE_URL;
@@ -122,6 +123,11 @@ const base_url = import.meta.env.BASE_URL;
                     title="Perfect Tetris"
                     img={PerfectTetrisImg}
                     link={base_url + "project/perfect-tetris"}
+                />
+                <ProjectCard
+                    title="BFP"
+                    img={BfpImg}
+                    link={base_url + "project/bfp"}
                 />
             </div>
         </article>

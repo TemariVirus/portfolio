@@ -1,0 +1,206 @@
+---
+import Links from "../../components/Links.astro";
+import BlogLayout from "../../layouts/BlogLayout.astro";
+
+import { Picture } from "astro:assets";
+import BfpImg from "../../images/bfp.png";
+
+const title = "BFP";
+---
+
+<BlogLayout
+    title={title}
+    description="BFP is a library for large floating point numbers."
+>
+    <Fragment slot="header">
+        <div class="grid justify-center">
+            <a href={BfpImg.src} aria-label="Open image">
+                <Picture
+                    src={BfpImg}
+                    alt="The BEEEEEEEG float Calculator. 8008135 ** 314159265358979323846 = 6.216960194619098e2168808348547951461860"
+                    loading="eager"
+                    layout="full-width"
+                />
+            </a>
+        </div>
+        <h1>{title}</h1>
+        <Links
+            links={[
+                {
+                    href: "https://codeberg.org/TemariVirus/BFP",
+                    text: "Code",
+                },
+                {
+                    href: "https://temarivirus.github.io/BFP/",
+                    text: "Demo",
+                },
+            ]}
+        />
+    </Fragment>
+
+    <p>
+        BFP is a library for large floating point numbers in incremental games.
+    </p>
+
+    <section id="features">
+        <h2>Features</h2>
+        <ul>
+            <li>0 memory allocation</li>
+            <li>Fast with decent accuracy</li>
+            <li>
+                Identical behaviour on any platform (assuming floating point +,
+                -, *, / and @abs are consistent)
+            </li>
+        </ul>
+        <p role="note">
+            BFP is not IEEE-754 compliant and does not always round correctly,
+            however.
+        </p>
+    </section>
+
+    <section id="background">
+        <h2>Background</h2>
+        <p>
+            I've been wanting to make a Hololive-themed incremental game with
+            some really big numbers, bigger than what 128-bit floating point can
+            handle (which Zig natively supports).
+        </p>
+        <p>Some existing libraries did not exactly fit my needs:</p>
+        <ul>
+            <li>
+                Multiple precision libraries like <a
+                    href="https://www.multiprecision.org/mpfrcx/index.html"
+                    >GMP</a
+                > offered arbritary precision, but I only wanted large magnitude so
+                the extra precision would waste CPU and memory (I don't care about
+                correct rounding either, we're not doing science).
+            </li>
+            <li>
+                Googology-sized number libraries like <a
+                    href="https://github.com/Naruyoko/OmegaNum.js"
+                    >OmegaNum.js</a
+                > can handle incomprehensibly large numbers without the exact precision
+                of GMP, but they were designed for numbers much larger than what I
+                was planning.
+            </li>
+        </ul>
+        <p>
+            <a href="https://github.com/Patashu/break_infinity.js"
+                >break_infinity.js</a
+            > was a sweet spot in range and speed (and is also what's used in Antimatter
+            Dimentions), but the idea of writing the game in JS (or <a
+                href="https://github.com/Razenpok/BreakInfinity.cs">C#</a
+            >) did not appeal to me. I figured I could make something faster
+            anyway.
+        </p>
+        <p role="note">
+            Waiting for offline progress to be calculated in the later stages of
+            Antimatter Dimensions always annoyed me. Sure, I <i>could</i> speed up
+            the tick rate, but I always felt like I was losing efficiency at high
+            speed ups, not to mention that my automator scripts tended to break past
+            8x speed. This was also in stark contrast to other simpler incremental
+            games I played in the past where offline progress was calculated instantly,
+            like as if Cabe Johnson was still running my 9000 lemonade stands in the
+            background. But I digress.
+        </p>
+    </section>
+
+    <section id="benchmarks">
+        <h2>Benchmarks</h2>
+        <p>
+            Below are some benchmarks comparing the performance of
+            break_infinity.js and BFP, based on the benchmarks in <a
+                href="https://github.com/Patashu/break_infinity.js/tree/22a00b9dcac4219760ba82e90c47ffba365958d6#benchmarks"
+                >break_infinity.js's README</a
+            >.
+        </p>
+        <p>
+            All projects except the first have all parsing done outside of the
+            benchmark. The exact code for the JS benchmarks can be found <a
+                href="https://jsbench.me/lbmppfim9n/1">here</a
+            >.
+        </p>
+        <div class="table-container">
+            <table>
+                <caption>
+                    break_infinity.js vs BFP, Operations per second
+                </caption>
+                <thead>
+                    <tr>
+                        <th>Project</th><th>break_infinity.js</th><th>BFP</th>
+                        <th>Speedup</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>new Decimal("1.23456789e987654321")</td>
+                        <td>1.6e7</td><td>0.132e7</td><td>0.083x</td>
+                    </tr>
+                    <tr>
+                        <td>Decimal.add("1e999", "9e998")</td>
+                        <td>2.7e7</td><td>28.5e7</td><td>10.6x</td>
+                    </tr>
+                    <tr>
+                        <td>Decimal.mul("1e999", "9e998")</td>
+                        <td>9.3e7</td><td>34.6e7</td><td>3.72x</td>
+                    </tr>
+                    <tr>
+                        <td>Decimal.pow(987.789, 123.321)</td>
+                        <td>2.2e7</td><td>4.08e7</td><td>1.85x</td>
+                    </tr>
+                    <tr>
+                        <td>Decimal.pow(2, 1e10)</td>
+                        <td>1.8e7</td><td>45.8e7</td><td>25.4x</td>
+                    </tr>
+                    <tr class="text-gray-400">
+                        <td>Decimal.log("987.654e789", 2)</td>
+                        <td>410e7(?)</td><td>21.2e7</td><td>0.052x</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <p>
+            With the exception of parsing, BFP is multiple times faster than
+            break_infinity.js. As it is expected for parsing and formatting to
+            only occur rarely, the focus for those operations in BFP was to
+            reduce code size rather than maximise speed.
+        </p>
+        <p role="note">
+            The log benchmark for break_infinity.js is a little sus as it
+            reports 4.1GFLOPS on a 5.4GHz processor, but the code runs
+            Math.log10 on a regular floating point number. The interpreter is
+            probably optimizing the result away and I couldn't find a way to
+            black box it.
+        </p>
+    </section>
+
+    <section id="testing">
+        <h2>Testing</h2>
+        <p>
+            In case anyone decides to speedrun my game, I wanted the code to be
+            fully deterministic and reproducible across platforms. Apart from
+            regular tests, I also have 5000 random samples for each operation
+            tested on 21 different CPUs (emulated through QEMU and Wasmtime) to
+            ensure that they all produce the same result.
+        </p>
+        <p>
+            For decimal formatting, I ran an exhaustive test of all IEEE-754
+            single-precision floats and matched the output to that generated by
+            Zig's standard library. I had extended <a
+                href="https://drive.google.com/file/d/1IEeATSVnEE6TkrHlCYNY2GjaraBjOT4f/view"
+                >Schubfach</a
+            > to work with arbitrary bit width floats, but was unable to prove the
+            amount of precision needed to always find the shortest correctly rounded
+            representation. So the actual precision to use was derived empirically
+            and I can only guarantee that it works for values in the range of f32
+            (I haven't found a failure yet though and it does work for <a
+                href="https://codeberg.org/TemariVirus/BFP/src/commit/1bc976824c34bf4a798485155d7366b2dad22816/src/tests/format.zig#L207-L211"
+                >really large values</a
+            >).
+        </p>
+        <p>
+            I also plan on using Zig's integrated fuzz tester when it becomes
+            more stable and stops crashing.
+        </p>
+    </section>
+</BlogLayout>
