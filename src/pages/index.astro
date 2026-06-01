@@ -6,6 +6,7 @@ import MainLayout from "../layouts/MainLayout.astro";
 import BannerImg from "../images/banner.png";
 import BfpImg from "../images/bfp.png";
 import PerfectTetrisImg from "../images/perfect-tetris.png";
+import TermGifPlayerImg from "../images/terminal-gif-player.png";
 
 const base_url = import.meta.env.BASE_URL;
 ---
@@ -128,6 +129,11 @@ const base_url = import.meta.env.BASE_URL;
                     title="BFP"
                     img={BfpImg}
                     link={base_url + "project/bfp"}
+                />
+                <ProjectCard
+                    title="Terminal GIF Player"
+                    img={TermGifPlayerImg}
+                    link={base_url + "project/terminal-gif-player"}
                 />
             </div>
         </article>

@@ -1,0 +1,61 @@
+---
+import Links from "../../components/Links.astro";
+import BlogLayout from "../../layouts/BlogLayout.astro";
+
+import { Picture } from "astro:assets";
+import TermGifPlayerGif from "../../images/terminal-gif-player.gif";
+
+const title = "Terminal GIF Player";
+---
+
+<BlogLayout
+    title={title}
+    description="Terminal GIF Player plays high-definition GIFs in the terminal."
+>
+    <Fragment slot="header">
+        <div class="grid justify-center">
+            <a href={TermGifPlayerGif.src} aria-label="Open image">
+                <Picture
+                    src={TermGifPlayerGif}
+                    alt="Terminal GIF Player playing a GIF of the famous donut-shaped C code that outputs a 3D spinning donut."
+                    loading="eager"
+                    layout="full-width"
+                />
+            </a>
+        </div>
+        <h1>{title}</h1>
+        <Links
+            links={[
+                {
+                    href: "https://codeberg.org/TemariVirus/terminal-gif-player",
+                    text: "Code",
+                },
+            ]}
+        />
+    </Fragment>
+
+    <p>Terminal GIF Player plays high-definition GIFs in the terminal.</p>
+    <p>
+        I made this as an experiment to see how I could push "rendering" stuff
+        in the terminal with <a
+            href="https://en.wikipedia.org/wiki/ANSI_escape_code#24-bit"
+            >ANSI escape codes</a
+        >.
+    </p>
+    <p>
+        I learned that I of course was not the first person to try this, and
+        picked up many tricks from others to make the program render 10_000s of
+        pixels per frame. These include:
+    </p>
+    <ul>
+        <li>
+            Using ANSI escape codes to move the cursor and only draw pixels that
+            changed since the last frame.
+        </li>
+        <li>
+            Using the "▀" character to render 2 pixels per character, one with
+            the foreground color, and another with the background color.
+        </li>
+        <li>Buffering writes to stdout.</li>
+    </ul>
+</BlogLayout>
