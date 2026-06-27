@@ -39,7 +39,12 @@ const { title, img, link } = Astro.props;
     }
 </style>
 <a href={link} class="block card" aria-label={title}>
-    <Picture src={img} alt="Title card" layout="full-width" />
+    <Picture
+        src={img}
+        alt="Title card"
+        layout="full-width"
+        formats={["avif", "webp"]}
+    />
 
     <h3 class="line-clamp-2">{title}</h3>
 </a>
