@@ -2,8 +2,7 @@
 import Links from "../../components/Links.astro";
 import BlogLayout from "../../layouts/BlogLayout.astro";
 
-import { Picture } from "astro:assets";
-import TermGifPlayerGif from "../../images/terminal-gif-player.gif";
+import TermGifPlayerGif from "../../images/terminal-gif-player.avif";
 
 const title = "Terminal GIF Player";
 ---
@@ -13,16 +12,16 @@ const title = "Terminal GIF Player";
     description="Terminal GIF Player plays high-definition GIFs in the terminal."
 >
     <Fragment slot="header">
-        <div class="grid justify-center">
-            <a href={TermGifPlayerGif.src} aria-label="Open image">
-                <Picture
-                    src={TermGifPlayerGif}
-                    alt="Terminal GIF Player playing a GIF of the famous donut-shaped C code that outputs a 3D spinning donut."
-                    loading="eager"
-                    layout="full-width"
-                />
-            </a>
-        </div>
+        <a href={TermGifPlayerGif.src} aria-label="Open image">
+            <img
+                class="w-full"
+                src={TermGifPlayerGif.src}
+                alt="Terminal GIF Player playing a GIF of the famous donut-shaped C code that outputs a 3D spinning donut."
+                width={TermGifPlayerGif.width}
+                height={TermGifPlayerGif.height}
+                loading="eager"
+            />
+        </a>
         <h1>{title}</h1>
         <Links
             links={[

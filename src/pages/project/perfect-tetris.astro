@@ -3,7 +3,7 @@ import Links from "../../components/Links.astro";
 import PerfectTetrisDemo from "../../components/PerfectTetrisDemo.astro";
 import BlogLayout from "../../layouts/BlogLayout.astro";
 
-import PerfectTetrisGif from "../../images/perfect-tetris.gif";
+import PerfectTetrisGif from "../../images/perfect-tetris.avif";
 
 const base_url = import.meta.env.BASE_URL;
 const title = "Perfect Tetris";
@@ -25,8 +25,6 @@ const blog_link = base_url + "blog/2026-05-13";
     <Fragment slot="header">
         <div class="grid justify-center">
             <a href={PerfectTetrisGif.src} aria-label="Open image">
-                <!-- I spent way too much time trying to minify this GIF lol,
-                use a raw <img> tag instead of <Image> so that astro doesn't ruin it. -->
                 <img
                     src={PerfectTetrisGif.src}
                     alt="TUI program performing over 60 perfect clears a second"
