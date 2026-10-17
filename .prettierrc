@@ -1,0 +1,13 @@
+{
+    "$schema": "https://www.schemastore.org/prettierrc.json",
+    "singleQuote": false,
+    "overrides": [
+        {
+            "files": "*.astro",
+            "options": {
+                "astroCompressHTML": "html",
+                "parser": "astro"
+            }
+        }
+    ]
+}
