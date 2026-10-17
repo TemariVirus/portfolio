@@ -1,0 +1,235 @@
+---
+import Code from "../../components/Code.astro";
+import Links from "../../components/Links.astro";
+import BlogLayout from "../../layouts/BlogLayout.astro";
+import { formatDateHuman, formateDateMachine } from "../../lib";
+
+export const title = "Building a tiny container runtime to test zxc";
+export const date = new Date("2026-10-17");
+---
+
+<BlogLayout
+    title={title}
+    description="I write a container runtime from scratch to test zxc, a simple Zig version manager."
+>
+    <Fragment slot="header">
+        <h1>{title}</h1>
+        <time datetime={formateDateMachine(date)}>{formatDateHuman(date)}</time>
+        <Links
+            links={[
+                {
+                    href: "https://codeberg.org/TemariVirus/zxc/src/commit/1d0d3e177e48cf383275b20eea58cb5673804aea/src/test/Container.zig",
+                    text: "Code",
+                },
+                {
+                    href: "https://codeberg.org/TemariVirus/zxc",
+                    text: "zxc",
+                },
+            ]}
+        />
+    </Fragment>
+
+    <section id="build-zig-zon">
+        <h2>../../../../../../../build.zig.zon</h2>
+        <p>
+            zxc is a <a href="https://ziglang.org/">Zig</a> version manager.
+            Unlike most version managers which only allow you to have one
+            version on your $PATH at a time, zxc infers the version needed when
+            <span class="code">zig</span> is run. This is possible because
+            projects using Zig's build system have a
+            <span class="code">build.zig.zon</span> file, which contains a
+            <span class="code">.minimum_zig_version</span> field (usually, at
+            least).
+        </p>
+        <p>
+            This <span class="code">build.zig.zon</span> file could be in the
+            current directory, the parent directory, the parent's parent, all
+            the way up to the root directory. This kinda makes it a pain in the
+            ass to test.
+        </p>
+    </section>
+
+    <section id="why-containers">
+        <h2>Why containers?</h2>
+        <p>There are 2 obvious ways of testing this:</p>
+        <ol>
+            <li>
+                Create a custom Io implementation for unit tests. Zig's almighty
+                <a href="https://kristoff.it/blog/zig-new-async-io/"
+                    >Io interface</a
+                >
+                would allow us to mock a filesystem without touching the actual
+                filesystem.
+            </li>
+            <li>
+                Run integration tests in a container-like environment with a new
+                root directory. This has the added benefit catching filesystem
+                errors that may not be mocked accurately.
+            </li>
+        </ol>
+        <p>
+            I went with option 2, as implementing containers ought to be easier
+            than implementing a filesystem from scratch.
+        </p>
+    </section>
+
+    <section id="first-invent-the-universe">
+        <h2>First, invent the unixverse...</h2>
+        <p>
+            My container implementation is Linux-only (macOS could also support
+            native containers via App Sandbox, but fortunately I don't own a
+            macintosh), which means we'll be dealing with some UNIXisms.
+        </p>
+        <p>
+            After spawning a new process, the first thing we want to do is
+            create a new namespace. The namespace partitions the container from
+            the rest of the OS, and allows us to do stuff like disable network
+            access, and act as root within the namespace, without needing to run
+            <span class="code">sudo</span>.
+        </p>
+        <p>Enjoy some slightly simplified code snippets from zxc:</p>
+        <Code
+            lang="zig"
+            code={`unshare(
+    // New user namespace, so we can act as root
+    linux.CLONE.NEWUSER |
+    // New mount and filesystem namespaces
+    linux.CLONE.NEWNS   |
+    // New network namespace,
+    // effectively disables network access
+    linux.CLONE.NEWNET);`}
+        />
+        <p role="note">
+            For security reasons, you usually would want to create a new process
+            ID namespace as well. But only the child processes are moved into
+            the new namespace, meaning I have to spawn yet another process. zxc
+            doesn't read process IDs, so I kept things simple.
+        </p>
+    </section>
+
+    <section id="mount-me-harder">
+        <h2>Mount me harder daddy Linux</h2>
+        <p>
+            We have a new namespace now, but we still need to change the root
+            directory and cd into it. You can guess that there is a very unholy
+            sequence of syscalls to do this:
+        </p>
+        <Code
+            lang="zig"
+            code={`// Bind mount desired root to itself because
+// pivotRoot() requires a mount point.
+mount(root_path, root_path, linux.MS.BIND | linux.MS.REC);
+// Stack the old root on top of our new root.
+// The old root has not been unmounted, so "."
+// technically refers to both the new and old roots.
+std.process.setCurrentPath(io, root_path);
+pivotRoot(".", ".");
+// Remount the old root as private, so that unmounts
+// do not propagate outside the new root.
+// "." resolves to the topmost mount in the stack,
+// which is the old root.
+mount(".", ".", linux.MS.REC | linux.MS.PRIVATE);
+// Unmount the old root. This does not unmount the
+// new root as it is lower in the stack.
+umount2(".", linux.MNT.DETACH);
+// The current working directory may still be from
+// the old namespace, so cd to the new root.
+std.process.setCurrentPath(io, "/");`}
+        />
+        <p>
+            If you understood that the first time, congratulations, you are
+            either larping or a freaking genius. This one takes the crown of the
+            most complicated filesystem thing I've ever done, and I've had to
+            implement a 2-level index for my OS class.
+        </p>
+    </section>
+
+    <section id="cross-process-error-bubbling">
+        <h2>Cross-process error bubbling</h2>
+        <p>
+            Phew, the hard part is done. Now we just set up some pipes, and we
+            can start testing! ...except that I can't see any errors when
+            spawning the container process fails.
+        </p>
+        <p>
+            Usually, returning an error in Zig is pretty simple. You just...
+            return it. But since the container must be spawned in a separate
+            process, the error is returned to the calling function... only in
+            the container's process.
+        </p>
+        <p>
+            We can create a dedicated pipe for the container to send the error
+            to the parent. However, we run into an issue with this line of code:
+        </p>
+        <Code
+            lang="zig"
+            code={`try execve(gpa, options.argv, options.environ_map);`}
+        />
+        <p>
+            If it succeeds, we are replaced by the new program, and the pipe is
+            never closed. If we close the pipe before calling
+            <span class="code">execve</span>, we can't send any errors when it
+            fails.
+        </p>
+        <p>
+            Luckily, Linux allows you to create pipes with the
+            <span class="code">CLOEXEC</span> flag. What this does is close the
+            pipe once our process, or any of its children, calls
+            <span class="code">execve</span> successfully.
+        </p>
+    </section>
+
+    <section id="final-result">
+        <h2>Final result</h2>
+        <p>
+            After wrapping the container in a <span class="code">Jail</span>
+            type with some convenience methods, this is what the test code looks
+            like:
+        </p>
+        <Code
+            lang="zig"
+            code={`test ".minimum_zig_version in build.zig.zon" {
+    const gpa = testing.allocator;
+    // Only works on linux 😜
+    if (!RUN_INTEGRATION_TESTS) {
+        return error.SkipZigTest;
+    }
+
+    var jail: Jail = .init();
+    defer jail.deinit();
+    jail.linkFile(options.zxc_path, "zxc");
+    jail.printFile(files.INDEX_PATH, .default_file, "{f}", .{
+        fmtIndex(&.{"2.3.4"}),
+    });
+    jail.printFile("build.zig.zon", .default_file,
+        \\\\.{{
+        \\\\    .minimum_zig_version = "2.3.4",
+        \\\\}}
+    , .{});
+    try jail.env.put(EnvVar.BASE_DIR.name, "/");
+
+    {
+        const run = try jail.run(gpa, &.{ "zxc", "realpath" });
+        defer run.deinit();
+        try run.expectTerm(.{ .exited = 0 });
+        try run.expectVersionStdout("2.3.4");
+    }
+}`}
+        />
+        <p>
+            Overall, I'm really happy with the simple API and how little code it
+            took. The
+            <a
+                href="https://codeberg.org/TemariVirus/zxc/src/commit/1d0d3e177e48cf383275b20eea58cb5673804aea/src/test/Container.zig"
+                >container runtime</a
+            >
+            is around 500 lines of code, and half of it is just wrapping
+            syscalls.
+        </p>
+        <p>
+            If you decide to use the container runtime, I would advise against
+            running untrusted programs in it, as there are tons of security
+            holes.
+        </p>
+    </section>
+</BlogLayout>

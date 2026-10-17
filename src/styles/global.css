@@ -57,3 +57,10 @@ article a {
 article a:hover {
   font-weight: 600;
 }
+
+span.code {
+  background-color: black;
+  padding: 0.25ch 0.5ch;
+  border-radius: 0.5ch;
+  color: goldenrod;
+}

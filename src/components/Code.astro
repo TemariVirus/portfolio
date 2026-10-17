@@ -1,0 +1,13 @@
+---
+import { Code } from "astro:components";
+type Props = Parameters<typeof Code>[0];
+
+const props = Astro.props;
+---
+
+<style>
+    .astro-code {
+        padding: 0.5rem 1rem;
+    }
+</style>
+<Code theme="ayu-dark" {...props} />
