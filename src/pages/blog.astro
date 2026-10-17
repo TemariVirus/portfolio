@@ -2,13 +2,14 @@
 import BlogLayout from "../layouts/BlogLayout.astro";
 import { formatDateHuman, formateDateMachine } from "../lib";
 
+const base_url = import.meta.env.BASE_URL;
 const files = import.meta.glob("./blog/*.astro");
 const posts = (await Promise.all(
     Object.entries(files).map(([path, f]) =>
         f().then((v: any) => {
             return {
                 ...v,
-                path: path.substring(2, path.length - 6),
+                path: path.substring(2, path.length - ".astro".length),
             };
         }),
     ),
@@ -33,15 +34,11 @@ const posts = (await Promise.all(
         <h1>Blog Posts</h1>
     </Fragment>
 
-    {
-        Object.values(posts).map((p) => (
-            <p>
-                <time datetime={formateDateMachine(p.date)}>
-                    {formatDateHuman(p.date)}
-                </time>
-                <br />
-                <a href={p.path}>{p.title}</a>
-            </p>
-        ))
-    }
+    {Object.values(posts).map((p) => <p>
+        <time datetime={formateDateMachine(p.date)}>
+            {formatDateHuman(p.date)}
+        </time>
+        <br />
+        <a href={base_url + p.path}>{p.title}</a>
+    </p>)}
 </BlogLayout>
