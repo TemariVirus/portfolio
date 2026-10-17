@@ -10,7 +10,11 @@ export const date = new Date("2026-10-17");
 
 <BlogLayout
     title={title}
-    description="I write a container runtime from scratch to test zxc, a simple Zig version manager."
+    description={
+        'I use the term "container runtime" very generously here. ' +
+        "I've never looked deeply into how containers work, " +
+        "but basic process isolation in Linux turned out to be surprisingly pleasant."
+    }
 >
     <Fragment slot="header">
         <h1>{title}</h1>
