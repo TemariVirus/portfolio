@@ -75,14 +75,18 @@ export const date = new Date("2026-10-17");
             I went with option 2, as implementing containers ought to be easier
             than implementing a filesystem from scratch.
         </p>
+        <p role="note">
+            From now on, I'll use the terms "container [process]" and "child
+            [process]" interchangably.
+        </p>
     </section>
 
-    <section id="first-invent-the-universe">
+    <section id="first-invent-the-unixverse">
         <h2>First, invent the unixverse...</h2>
         <p>
             My container implementation is Linux-only (macOS could also support
-            native containers via App Sandbox, but fortunately I don't own a
-            macintosh), which means we'll be dealing with some UNIXisms.
+            native containers via App Sandbox, but <i>fortunately</i> I don't
+            own a macintosh), which means we'll be dealing with some UNIXisms.
         </p>
         <p>
             After spawning a new process, the first thing we want to do is
@@ -101,7 +105,8 @@ export const date = new Date("2026-10-17");
     linux.CLONE.NEWNS   |
     // New network namespace,
     // effectively disables network access
-    linux.CLONE.NEWNET);`}
+    linux.CLONE.NEWNET,
+);`}
         />
         <p role="note">
             For security reasons, you usually would want to create a new process
@@ -151,9 +156,8 @@ std.process.setCurrentPath(io, "/");`}
     <section id="cross-process-error-bubbling">
         <h2>Cross-process error bubbling</h2>
         <p>
-            Phew, the hard part is done. Now we just set up some pipes, and we
-            can start testing! ...except that I can't see any errors when
-            spawning the container process fails.
+            Phew, the hardest part is done. But there's a big issue: I can't see
+            any errors if spawning the container process fails.
         </p>
         <p>
             Usually, returning an error in Zig is pretty simple. You just...
@@ -181,12 +185,88 @@ std.process.setCurrentPath(io, "/");`}
             pipe once our process, or any of its children, calls
             <span class="code">execve</span> successfully.
         </p>
+        <p role="note">
+            Fun fact: All errors in Zig are backed by an integer. Since both the
+            parent and child processes were running the same program, the
+            mapping of integers to errors is the same. We can send that backing
+            integer over the pipe, rather than having to come up with our own
+            serialization.
+        </p>
+    </section>
+
+    <section>
+        <h2>More pipes</h2>
+        <p>
+            To do an integration test, we need some basic info from the
+            container:
+        </p>
+        <ul>
+            <li>exit code</li>
+            <li>stdout</li>
+            <li>stderr</li>
+        </ul>
+        <p>
+            The exit code is easy. Linux gives it to us after we
+            <span class="code">wait()</span> for the container to exit.
+        </p>
+        <p>
+            For stdout and stderr, you probably already know that we can pass it
+            between processes by "piping" it in the shell:
+        </p>
+        <Code lang="sh" theme="aurora-x" code={`ls too-many-files/ | less`} />
+        <p>
+            This can be done with the <span class="code">dup2</span> syscall,
+            which allows us to duplicate a file descriptor and specify a number
+            for the duplicate. To replace stdin with stdout, we can do
+            <span class="code">dup2(1, 0)</span> (1 = stdout, 0 = stdin).
+        </p>
+        <p>
+            Pipes have their own file descriptors, so we can replace
+            stdout/stderr with the write end of our pipe inside the container.
+            The file descriptors for stdout/stderr are hardcoded, so when the
+            container tries to write to stdout/stderr, it writes to our pipe
+            instead.
+        </p>
+        <p>
+            The astute among you may have realised something odd: We unshared
+            the filesystem namespace earlier, so how come the container is
+            sharing file descriptors with its parent? Let's look at the
+            <a href="https://www.man7.org/linux/man-pages/man2/unshare.2.html"
+                >documentation</a
+            >
+            for the <span class="code">CLONE_FS</span> flag (implied by the
+            <span class="code">CLONE_NEWNS</span> flag we set):
+        </p>
+        <figure>
+            <blockquote>
+                Reverse the effect of the clone(2) <b>CLONE_FS</b> flag. Unshare
+                filesystem attributes, so that the calling process no longer
+                shares its root directory (chroot(2)), current directory
+                (chdir(2)), or umask (umask(2)) attributes with any other
+                process.
+            </blockquote>
+        </figure>
+        <p>
+            Nowhere does it say that it unshares file descriptors. That is
+            handled by the <span class="code">CLONE_FILES</span> flag instead.
+            So we have a security vulnerability that leaks file descriptors
+            which may point outside the container's root. Luckily, I'm only
+            running trusted code.
+        </p>
+        <p role="note">
+            For the purposes of this blog post, we shall assume that I can trust
+            myself to write good code.
+        </p>
     </section>
 
     <section id="final-result">
         <h2>Final result</h2>
         <p>
-            After wrapping the container in a <span class="code">Jail</span>
+            After wrapping the container in a
+            <a
+                href="https://codeberg.org/TemariVirus/zxc/src/commit/1d0d3e177e48cf383275b20eea58cb5673804aea/src/test/integration.zig#L18-L141"
+                >Jail</a
+            >
             type with some convenience methods, this is what the test code looks
             like:
         </p>
