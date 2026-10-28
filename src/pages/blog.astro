@@ -34,11 +34,13 @@ const posts = (await Promise.all(
         <h1>Blog Posts</h1>
     </Fragment>
 
-    {Object.values(posts).map((p) => <p>
-        <time datetime={formateDateMachine(p.date)}>
-            {formatDateHuman(p.date)}
-        </time>
-        <br />
-        <a href={base_url + p.path}>{p.title}</a>
-    </p>)}
+    {posts
+        .sort((a, b) => b.date.getTime() - a.date.getTime())
+        .map((p) => <p>
+            <time datetime={formateDateMachine(p.date)}>
+                {formatDateHuman(p.date)}
+            </time>
+            <br />
+            <a href={base_url + p.path}>{p.title}</a>
+        </p>)}
 </BlogLayout>
